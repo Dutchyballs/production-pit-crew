@@ -29,7 +29,7 @@ The repository includes an official `.codex-plugin/plugin.json` manifest that pa
 
 ## Install the Codex adapter
 
-Requirements: Python 3.11 or newer, plus Bash for the mutating installer. The PowerShell wrapper supports package validation and dry-run on Windows; v0.1 intentionally fails closed before Windows mutation until its reparse-safe backend is complete.
+Requirements: Python 3.11 or newer, plus Bash on macOS/Linux or Windows PowerShell 5.1/PowerShell 7 on Windows.
 
 Install into the current project:
 
@@ -37,16 +37,20 @@ Install into the current project:
 ./scripts/install.sh --scope project --project-dir .
 ```
 
-Windows preview (no writes):
+Install into the current project on Windows:
 
 ```powershell
-pwsh -File .\scripts\install.ps1 -Scope project -ProjectDir . -DryRun
+powershell -File .\scripts\install.ps1 -Scope Project -ProjectDir .
 ```
 
 Install for the current user:
 
 ```bash
 ./scripts/install.sh --scope user
+```
+
+```powershell
+powershell -File .\scripts\install.ps1 -Scope User
 ```
 
 Use `--dry-run` (PowerShell: `-DryRun`) to inspect actions first. The installer validates the complete operation before writing, tracks only this pack's files, refuses unmanaged conflicts by default, and supports safe reinstallation and uninstall. See [Usage](docs/usage.md) for paths and all options.
@@ -111,7 +115,11 @@ python3 -m unittest discover -s tests -v
 bash -n scripts/install.sh
 ```
 
-PowerShell behavior is also exercised in CI on Windows.
+PowerShell 5.1 and PowerShell 7 lifecycle behavior is exercised in CI on Windows. A release candidate is built only from a clean Git commit:
+
+```bash
+python3 scripts/build_release.py --output-dir dist --verify-extracted
+```
 
 ## Contributing and security
 

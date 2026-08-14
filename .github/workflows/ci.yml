@@ -38,24 +38,52 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Bash syntax and dry run
+      - name: Bash syntax and real lifecycle
         if: runner.os != 'Windows'
         shell: bash
         run: |
           bash -n scripts/install.sh
           project_dir="$(mktemp -d)"
-          ./scripts/install.sh --scope project --project-dir "$project_dir" --dry-run
-      - name: PowerShell dry run
+          ./scripts/install.sh --scope project --project-dir "$project_dir"
+          test -f "$project_dir/.cwc/codex-workflow-crew-state.json"
+          ./scripts/install.sh --scope project --project-dir "$project_dir" --uninstall
+          test ! -e "$project_dir/.cwc/codex-workflow-crew-state.json"
+      - name: Windows PowerShell real lifecycle
         if: runner.os == 'Windows'
         shell: powershell
         run: |
-          $projectDir = Join-Path $env:RUNNER_TEMP "pitcrew wrapper smoke"
+          $projectDir = Join-Path $env:RUNNER_TEMP "pitcrew powershell smoke"
           New-Item -ItemType Directory -Force -Path $projectDir | Out-Null
-          .\scripts\install.ps1 -Scope Project -ProjectDir $projectDir -DryRun
-      - name: pwsh dry run
+          .\scripts\install.ps1 -Scope Project -ProjectDir $projectDir
+          if (-not (Test-Path -LiteralPath (Join-Path $projectDir ".cwc\codex-workflow-crew-state.json") -PathType Leaf)) { throw "PowerShell install state is missing" }
+          .\scripts\install.ps1 -Scope Project -ProjectDir $projectDir -Uninstall
+          if (Test-Path -LiteralPath (Join-Path $projectDir ".cwc\codex-workflow-crew-state.json")) { throw "PowerShell uninstall left state behind" }
+      - name: PowerShell 7 real lifecycle
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           $projectDir = Join-Path $env:RUNNER_TEMP "pitcrew pwsh smoke"
           New-Item -ItemType Directory -Force -Path $projectDir | Out-Null
-          .\scripts\install.ps1 -Scope Project -ProjectDir $projectDir -DryRun
+          .\scripts\install.ps1 -Scope Project -ProjectDir $projectDir
+          if (-not (Test-Path -LiteralPath (Join-Path $projectDir ".cwc\codex-workflow-crew-state.json") -PathType Leaf)) { throw "pwsh install state is missing" }
+          .\scripts\install.ps1 -Scope Project -ProjectDir $projectDir -Uninstall
+          if (Test-Path -LiteralPath (Join-Path $projectDir ".cwc\codex-workflow-crew-state.json")) { throw "pwsh uninstall left state behind" }
+
+  release-archive:
+    name: Build and verify release archive
+    needs: [validate, wrappers]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build from the exact clean commit and verify extraction
+        run: python scripts/build_release.py --output-dir dist --verify-extracted
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-pit-crew-release-candidate
+          path: |
+            dist/production-pit-crew-0.1.0.zip
+            dist/SHA256SUMS
+          if-no-files-found: error

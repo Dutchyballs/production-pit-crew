@@ -24,12 +24,12 @@ FRONTMATTER_KEYS = {"name", "description"}
 MARKDOWN_LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)]+)\)")
 IGNORED_DIRS = {".git", ".cwc", ".pitcrew", "__pycache__"}
 PLUGIN_MANIFEST = ".codex-plugin/plugin.json"
-PLUGIN_REQUIRED_KEYS = {"name", "version", "description", "skills"}
+PLUGIN_REQUIRED_KEYS = {"name", "version", "description", "author", "skills", "interface"}
 PLUGIN_ALLOWED_KEYS = PLUGIN_REQUIRED_KEYS | {
     "apps",
     "author",
     "homepage",
-    "hooks",
+    "id",
     "interface",
     "keywords",
     "license",
@@ -165,9 +165,18 @@ def validate_plugin(repo: Path, manifest: dict | None, report: Report) -> None:
         report.error(f"{PLUGIN_MANIFEST}: description must be a non-empty string")
     if data.get("skills") != "./skills/":
         report.error(f"{PLUGIN_MANIFEST}: skills must point to './skills/'")
-    for key in ("homepage", "repository", "license", "mcpServers", "apps"):
+    for key in ("id", "homepage", "repository", "license", "apps"):
         if key in data and (not isinstance(data[key], str) or not data[key].strip()):
             report.error(f"{PLUGIN_MANIFEST}: {key} must be a non-empty string")
+    if "apps" in data and data["apps"] not in {".app.json", "./.app.json"}:
+        report.error(f"{PLUGIN_MANIFEST}: apps must resolve to '.app.json'")
+    if "mcpServers" in data:
+        mcp_servers = data["mcpServers"]
+        if isinstance(mcp_servers, str):
+            if mcp_servers not in {".mcp.json", "./.mcp.json"}:
+                report.error(f"{PLUGIN_MANIFEST}: mcpServers must resolve to '.mcp.json'")
+        elif not isinstance(mcp_servers, dict):
+            report.error(f"{PLUGIN_MANIFEST}: mcpServers must be a path or object")
     if "keywords" in data and (
         not isinstance(data["keywords"], list)
         or not data["keywords"]
@@ -182,10 +191,41 @@ def validate_plugin(repo: Path, manifest: dict | None, report: Report) -> None:
             not isinstance(value, str) or not value.strip() for value in author.values()
         ):
             report.error(f"{PLUGIN_MANIFEST}: author supports non-empty name, email, and url strings")
-    if "interface" in data and not isinstance(data["interface"], dict):
+    interface = data.get("interface")
+    if not isinstance(interface, dict):
         report.error(f"{PLUGIN_MANIFEST}: interface must be an object")
-    if "hooks" in data and not isinstance(data["hooks"], (str, list, dict)):
-        report.error(f"{PLUGIN_MANIFEST}: hooks must be a path, list, or object")
+    else:
+        for key in (
+            "displayName",
+            "shortDescription",
+            "longDescription",
+            "developerName",
+            "category",
+        ):
+            if not isinstance(interface.get(key), str) or not interface[key].strip():
+                report.error(f"{PLUGIN_MANIFEST}: interface.{key} must be a non-empty string")
+        capabilities = interface.get("capabilities")
+        if (
+            not isinstance(capabilities, list)
+            or not capabilities
+            or any(not isinstance(item, str) or not item.strip() for item in capabilities)
+        ):
+            report.error(
+                f"{PLUGIN_MANIFEST}: interface.capabilities must be a non-empty list of non-empty strings"
+            )
+        prompts = interface.get("defaultPrompt")
+        if (
+            not isinstance(prompts, list)
+            or not prompts
+            or len(prompts) > 3
+            or any(
+                not isinstance(item, str) or not item.strip() or len(item) > 128
+                for item in prompts
+            )
+        ):
+            report.error(
+                f"{PLUGIN_MANIFEST}: interface.defaultPrompt must contain one to three non-empty strings of at most 128 characters"
+            )
 
 
 def validate_agents(repo: Path, manifest: dict | None, report: Report) -> None:

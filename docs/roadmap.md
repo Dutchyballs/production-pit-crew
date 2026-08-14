@@ -8,14 +8,14 @@ The roadmap records direction, not promised dates. A host is supported only afte
 - Ship four portable skills and four Codex custom agents.
 - Package the skills with an OpenAI plugin manifest.
 - Preserve safe migration from the Codex Workflow Crew preview.
-- Validate on Linux, macOS, and Windows CI; keep Windows mutation fail-closed.
+- Validate real install and uninstall lifecycles on Linux, macOS, and Windows CI.
+- Support reparse-safe Windows project and user installation through the shared Python core.
 - Publish signed or checksummed release archives and installation guidance.
 
-## Next — Distribution and Windows
+## Next — Distribution
 
 - Test the skills-only plugin through a local marketplace.
 - Prepare universal plugin-directory submission.
-- Complete or replace the Windows agent installer with a reparse-safe distribution path.
 - Add end-to-end smoke tests through supported Codex desktop, CLI, and IDE surfaces.
 
 ## Later — Additional host adapters

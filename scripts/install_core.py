@@ -17,6 +17,9 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Callable, Iterable
 
+if os.name == "nt":
+    import windows_fs
+
 
 EXIT_CLI = 2
 EXIT_PACKAGE = 3
@@ -30,7 +33,10 @@ WINDOWS_RESERVED = {
     "NUL",
     *(f"COM{i}" for i in range(1, 10)),
     *(f"LPT{i}" for i in range(1, 10)),
+    *(f"COM{i}" for i in "¹²³"),
+    *(f"LPT{i}" for i in "¹²³"),
 }
+WINDOWS_INVALID_CHARS = set('<>"|?*')
 SEMVER = re.compile(r"\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?")
 MAX_JSON_BYTES = 1024 * 1024
 MAX_SOURCE_BYTES = 4 * 1024 * 1024
@@ -111,7 +117,12 @@ def sha256_file(path: Path) -> str:
 def validate_relative(value: object, label: str) -> str:
     if not isinstance(value, str) or not value:
         raise PackageError(f"{label} must be a non-empty relative path")
-    if "\x00" in value or "\\" in value or ":" in value:
+    if (
+        "\x00" in value
+        or "\\" in value
+        or ":" in value
+        or any(ord(character) < 32 or character in WINDOWS_INVALID_CHARS for character in value)
+    ):
         raise PackageError(f"{label} contains a non-portable path character: {value!r}")
     posix = PurePosixPath(value)
     windows = PureWindowsPath(value)
@@ -196,6 +207,13 @@ def require_regular_source(path: Path, label: str) -> None:
 
 
 def read_regular_source(path: Path, label: str, max_bytes: int | None = None) -> bytes:
+    if os.name == "nt":
+        try:
+            return windows_fs.read_regular(path, max_bytes)
+        except windows_fs.UnsafePathError as exc:
+            raise PackageError(f"{label} traverses a reparse point or unsafe component: {exc}") from exc
+        except OSError as exc:
+            raise PackageError(f"cannot open {label} safely at {path}: {exc}") from exc
     flags = (
         os.O_RDONLY
         | getattr(os, "O_BINARY", 0)
@@ -463,6 +481,14 @@ def contained_path(root: Path, anchor: Path, relative: str) -> Path:
 
 
 def inspect_destination(path: Path) -> str | None:
+    if os.name == "nt":
+        try:
+            content = windows_fs.read_regular_if_exists(path, MAX_SOURCE_BYTES)
+        except windows_fs.UnsafePathError as exc:
+            raise ConflictError(f"destination traverses a reparse point or unsafe component: {exc}") from exc
+        except OSError as exc:
+            raise InstallIOError(f"cannot inspect destination {path}: {exc}") from exc
+        return None if content is None else sha256_bytes(content)
     if not path.exists() and not is_linklike(path):
         return None
     if is_linklike(path):
@@ -693,6 +719,14 @@ def atomic_write(
     mode: int = 0o644,
     safety_check: Callable[[], None] | None = None,
 ) -> None:
+    if os.name == "nt":
+        try:
+            windows_fs.atomic_write(path, data, safety_check)
+            return
+        except windows_fs.UnsafePathError as exc:
+            raise ConflictError(f"atomic write traverses a reparse point or unsafe component: {exc}") from exc
+        except OSError as exc:
+            raise InstallIOError(f"atomic write failed for {path}: {exc}") from exc
     path.parent.mkdir(parents=True, exist_ok=True)
     handle = None
     temporary: Path | None = None
@@ -721,16 +755,29 @@ def atomic_write(
                 pass
 
 
-def acquire_lock(layout: Layout) -> tuple[int, Path]:
+def acquire_lock(layout: Layout) -> tuple[int | None, Path, str]:
     state_dir = validate_state_dir(layout)
+    payload = f"pid={os.getpid()} time={int(time.time())}\n".encode()
+    lock = state_dir / "codex-workflow-crew.lock"
+    if os.name == "nt":
+        try:
+            windows_fs.exclusive_write(lock, payload)
+            return None, lock, sha256_bytes(payload)
+        except windows_fs.UnsafePathError as exc:
+            raise ConflictError(f"install lock traverses a reparse point or unsafe component: {exc}") from exc
+        except OSError as exc:
+            if getattr(exc, "winerror", None) in {80, 183}:
+                raise ConflictError(
+                    f"another install may be running, or a prior run crashed: {lock}; verify no installer is active, then remove that exact lock file"
+                ) from exc
+            raise InstallIOError(f"cannot acquire install lock: {exc}") from exc
     try:
         state_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
         validate_state_dir(layout)
-        lock = state_dir / "codex-workflow-crew.lock"
         descriptor = os.open(lock, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-        os.write(descriptor, f"pid={os.getpid()} time={int(time.time())}\n".encode())
+        os.write(descriptor, payload)
         os.fsync(descriptor)
-        return descriptor, lock
+        return descriptor, lock, sha256_bytes(payload)
     except FileExistsError as exc:
         raise ConflictError(
             f"another install may be running, or a prior run crashed: {layout.state_dir / 'codex-workflow-crew.lock'}; verify no installer is active, then remove that exact lock file"
@@ -739,21 +786,37 @@ def acquire_lock(layout: Layout) -> tuple[int, Path]:
         raise InstallIOError(f"cannot acquire install lock: {exc}") from exc
 
 
-def release_lock(descriptor: int, lock: Path) -> None:
-    try:
+def release_lock(descriptor: int | None, lock: Path, expected_digest: str) -> None:
+    if descriptor is not None:
         os.close(descriptor)
-    finally:
-        try:
+    try:
+        if os.name == "nt":
+            windows_fs.delete_regular(
+                lock,
+                safety_check=lambda: require_current_digest(
+                    lock, expected_digest, "install lock changed concurrently"
+                ),
+            )
+        else:
             lock.unlink()
-        except FileNotFoundError:
-            pass
-        except OSError as exc:
-            eprint(f"warning: could not remove install lock {lock}: {exc}")
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        eprint(f"warning: could not remove install lock {lock}: {exc}")
+    except (ConflictError, InstallIOError) as exc:
+        eprint(f"warning: could not remove install lock {lock}: {exc}")
 
 
 def create_backup_root(layout: Layout) -> Path:
     state_dir = validate_state_dir(layout)
     base = state_dir / "backups"
+    if os.name == "nt":
+        try:
+            return windows_fs.make_unique_directory(base, "transaction-")
+        except windows_fs.UnsafePathError as exc:
+            raise ConflictError(f"backup path traverses a reparse point or unsafe component: {exc}") from exc
+        except OSError as exc:
+            raise InstallIOError(f"cannot create exclusive backup transaction directory: {exc}") from exc
     base.mkdir(mode=0o700, parents=True, exist_ok=True)
     validate_state_dir(layout)
     try:
@@ -783,6 +846,16 @@ def persistent_backup_path(layout: Layout, backup_root: Path, root: str, relativ
 
 
 def exclusive_write(path: Path, data: bytes, mode: int) -> None:
+    if os.name == "nt":
+        try:
+            windows_fs.exclusive_write(path, data)
+            return
+        except windows_fs.UnsafePathError as exc:
+            raise ConflictError(f"backup path traverses a reparse point or unsafe component: {exc}") from exc
+        except OSError as exc:
+            if getattr(exc, "winerror", None) in {80, 183}:
+                raise ConflictError(f"refusing to overwrite an existing backup file: {path}") from exc
+            raise InstallIOError(f"cannot create backup file {path}: {exc}") from exc
     path.parent.mkdir(parents=True, exist_ok=True)
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
     descriptor: int | None = None
@@ -814,6 +887,37 @@ def require_current_digest(path: Path, expected_digest: str | None, message: str
         raise ConflictError(f"{message}: {path}")
 
 
+def read_destination_bytes(path: Path) -> bytes:
+    if os.name == "nt":
+        try:
+            return windows_fs.read_regular(path, MAX_SOURCE_BYTES)
+        except windows_fs.UnsafePathError as exc:
+            raise ConflictError(f"destination traverses a reparse point or unsafe component: {exc}") from exc
+        except OSError as exc:
+            raise InstallIOError(f"cannot read destination {path}: {exc}") from exc
+    try:
+        return path.read_bytes()
+    except OSError as exc:
+        raise InstallIOError(f"cannot read destination {path}: {exc}") from exc
+
+
+def remove_regular(path: Path, safety_check: Callable[[], None] | None = None) -> None:
+    if os.name == "nt":
+        try:
+            windows_fs.delete_regular(path, safety_check)
+            return
+        except windows_fs.UnsafePathError as exc:
+            raise ConflictError(f"delete traverses a reparse point or unsafe component: {exc}") from exc
+        except OSError as exc:
+            raise InstallIOError(f"cannot delete destination {path}: {exc}") from exc
+    if safety_check is not None:
+        safety_check()
+    try:
+        path.unlink()
+    except OSError as exc:
+        raise InstallIOError(f"cannot delete destination {path}: {exc}") from exc
+
+
 def apply_install(
     entries: list[Entry],
     actions: list[Action],
@@ -829,10 +933,14 @@ def apply_install(
             if action.verb not in {"CREATE", "UPDATE", "REMOVE"}:
                 continue
             target, current_digest = verify_action_target(action, layout)
-            old_bytes = target.read_bytes() if current_digest is not None else None
+            old_bytes = read_destination_bytes(target) if current_digest is not None else None
             if old_bytes is not None and sha256_bytes(old_bytes) != current_digest:
                 raise ConflictError(f"destination changed while it was being read: {target}")
-            old_mode = stat.S_IMODE(target.stat().st_mode) if current_digest is not None else 0o644
+            old_mode = (
+                stat.S_IMODE(target.stat().st_mode)
+                if current_digest is not None and os.name != "nt"
+                else 0o644
+            )
             written_digest = entry_map[action.key].digest if action.verb in {"CREATE", "UPDATE"} else None
             if action.forced and old_bytes is not None:
                 assert backup_root is not None
@@ -848,8 +956,10 @@ def apply_install(
                     safety_check=lambda a=action: verify_action_target(a, layout),
                 )
             else:
-                verify_action_target(action, layout)
-                target.unlink()
+                remove_regular(
+                    target,
+                    safety_check=lambda a=action: verify_action_target(a, layout),
+                )
             changed.append((action, old_bytes, old_mode, written_digest))
 
         new_state = {
@@ -885,7 +995,12 @@ def apply_install(
                     )
                 if old_bytes is None:
                     if current is not None:
-                        target.unlink()
+                        remove_regular(
+                            target,
+                            safety_check=lambda p=target, d=current: require_current_digest(
+                                p, d, "rollback target changed concurrently"
+                            ),
+                        )
                 else:
                     atomic_write(
                         target,
@@ -916,22 +1031,27 @@ def apply_uninstall(actions: list[Action], layout: Layout, old_state: dict) -> N
             target, current_digest = verify_action_target(action, layout)
             if current_digest is None:
                 continue
-            old_bytes = target.read_bytes()
+            old_bytes = read_destination_bytes(target)
             if sha256_bytes(old_bytes) != current_digest:
                 raise ConflictError(f"destination changed while it was being read: {target}")
-            old_mode = stat.S_IMODE(target.stat().st_mode)
+            old_mode = stat.S_IMODE(target.stat().st_mode) if os.name != "nt" else 0o644
             if action.forced:
                 assert backup_root is not None
                 backup = persistent_backup_path(layout, backup_root, action.root, action.relative)
                 exclusive_write(backup, old_bytes, old_mode)
                 print(f"BACKUP    {target} -> {backup}")
-            verify_action_target(action, layout)
-            target.unlink()
+            remove_regular(
+                target,
+                safety_check=lambda a=action: verify_action_target(a, layout),
+            )
             changed.append((action, old_bytes, old_mode))
         expected_state_digest = old_state["_state_file_sha256"]
         verify_state_unchanged(layout, expected_state_digest)
         try:
-            state_path(layout).unlink()
+            remove_regular(
+                state_path(layout),
+                safety_check=lambda: verify_state_unchanged(layout, expected_state_digest),
+            )
         except FileNotFoundError:
             pass
     except Exception as exc:
@@ -981,11 +1101,6 @@ def run(args: argparse.Namespace, repo_root: Path) -> int:
     print(f"Agent root: {layout.roots['agents']}")
     print(f"Skill root: {layout.roots['skills']}")
 
-    if os.name == "nt" and not args.dry_run:
-        raise PackageError(
-            "v0.1 supports validation and dry-run on Windows, but mutating install/uninstall is fail-closed until a handle-relative reparse-safe backend is available"
-        )
-
     if args.dry_run:
         old_state = read_state(layout, ownership, trusted_hashes)
         actions = (
@@ -1009,7 +1124,7 @@ def run(args: argparse.Namespace, repo_root: Path) -> int:
     else:
         preflight_install(entries, old_state, layout, ownership, args.force)
 
-    descriptor, lock = acquire_lock(layout)
+    descriptor, lock, lock_digest = acquire_lock(layout)
     try:
         old_state = read_state(layout, ownership, trusted_hashes)
         if args.uninstall and old_state is None:
@@ -1031,7 +1146,7 @@ def run(args: argparse.Namespace, repo_root: Path) -> int:
             print(f"Installed Production Pit Crew for Codex {manifest['version']}.")
         return 0
     finally:
-        release_lock(descriptor, lock)
+        release_lock(descriptor, lock, lock_digest)
 
 
 def parser() -> argparse.ArgumentParser:

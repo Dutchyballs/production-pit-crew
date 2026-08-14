@@ -31,7 +31,6 @@ A user can install or package the four skills, add the Codex custom agents where
 - Persistent memory or background operation.
 - A replacement for dedicated security, privacy, migration, performance, or incident-readiness workflows.
 - Claims that untested host adapters are supported.
-- Windows filesystem mutation until the installer has a reparse-safe backend.
 
 ## Success criteria
 

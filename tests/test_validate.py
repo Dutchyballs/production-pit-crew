@@ -68,9 +68,6 @@ class ValidatorTests(unittest.TestCase):
                 "author": {"name": "Pit Crew maintainers", "url": "https://example.com"},
                 "homepage": "https://example.com/production-pit-crew",
                 "repository": "https://github.com/example/production-pit-crew",
-                "mcpServers": "./.mcp.json",
-                "apps": "./.app.json",
-                "hooks": ["./hooks/session.json"],
             }
         )
         plugin_path.write_text(json.dumps(plugin), encoding="utf-8")
@@ -78,6 +75,18 @@ class ValidatorTests(unittest.TestCase):
         report = VALIDATE.validate_repo(repo)
 
         self.assertEqual([], report.errors)
+
+    def test_unsupported_plugin_hooks_fail(self) -> None:
+        temporary, repo = self.copy_repo()
+        self.addCleanup(temporary.cleanup)
+        plugin_path = repo / ".codex-plugin" / "plugin.json"
+        plugin = json.loads(plugin_path.read_text(encoding="utf-8"))
+        plugin["hooks"] = ["./hooks/session.json"]
+        plugin_path.write_text(json.dumps(plugin), encoding="utf-8")
+
+        report = VALIDATE.validate_repo(repo)
+
+        self.assertTrue(any("unsupported keys" in error and "hooks" in error for error in report.errors))
 
     def test_invalid_plugin_keywords_type_fails(self) -> None:
         temporary, repo = self.copy_repo()
@@ -90,6 +99,18 @@ class ValidatorTests(unittest.TestCase):
         report = VALIDATE.validate_repo(repo)
 
         self.assertTrue(any("keywords must be" in error for error in report.errors))
+
+    def test_missing_official_plugin_interface_metadata_fails(self) -> None:
+        temporary, repo = self.copy_repo()
+        self.addCleanup(temporary.cleanup)
+        plugin_path = repo / ".codex-plugin" / "plugin.json"
+        plugin = json.loads(plugin_path.read_text(encoding="utf-8"))
+        del plugin["interface"]["capabilities"]
+        plugin_path.write_text(json.dumps(plugin), encoding="utf-8")
+
+        report = VALIDATE.validate_repo(repo)
+
+        self.assertTrue(any("interface.capabilities" in error for error in report.errors))
 
     def test_undeclared_agent_fails_inventory(self) -> None:
         temporary, repo = self.copy_repo()

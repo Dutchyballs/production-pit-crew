@@ -14,7 +14,7 @@ The skills carry the reusable workflow. The custom agents add independent delega
 ## Requirements
 
 - Python 3.11 or newer.
-- Bash on macOS or Linux for install/uninstall. PowerShell on Windows supports validation and dry-run in v0.1.
+- Bash on macOS or Linux, or Windows PowerShell 5.1/PowerShell 7 on Windows.
 - A Codex installation that supports project or user custom agents and skills.
 
 ## Choose a scope
@@ -44,15 +44,21 @@ Install after reviewing the plan:
 ./scripts/install.sh --scope project --project-dir .
 ```
 
+```powershell
+powershell -File .\scripts\install.ps1 -Scope Project -ProjectDir .
+```
+
 For a user installation:
 
 ```bash
 ./scripts/install.sh --scope user
 ```
 
-Start a fresh Codex session after installation.
+```powershell
+powershell -File .\scripts\install.ps1 -Scope User
+```
 
-Windows mutating install and uninstall deliberately fail closed in v0.1. The package can still be validated and previewed with `-DryRun`; automatic mutation will be enabled only with a handle-relative, reparse-safe Windows backend. Do not bypass this by weakening the checks.
+Windows mutation is supported only on absolute local-drive paths. The installer rejects UNC locations and every symlink, junction, or other reparse point in the destination ancestry. It pins validated directory ancestry while staging, replacing, and deleting files so a concurrent directory rename cannot redirect a checked operation.
 
 Start a fresh Codex session after a supported installation.
 
@@ -69,6 +75,8 @@ Start a fresh Codex session after a supported installation.
 The installer is repeatable: content already installed exactly is reported as unchanged. A different unmanaged file at a target path stops the entire operation before writes unless `--force` is explicit.
 
 On POSIX systems, installation also stops when a destination has a group- or world-writable ancestor without sticky-directory protection. This prevents another local account from swapping a checked directory while files are being replaced. Move the project to an owner-controlled path or install the files manually after reviewing that environment; `--force` does not bypass this check.
+
+On Windows, `--force` likewise does not bypass reparse-point, local-drive, exact-ownership, locking, or apply-time digest protections.
 
 ## Uninstall
 

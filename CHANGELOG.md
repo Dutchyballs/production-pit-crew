@@ -9,4 +9,8 @@ All notable changes to Production Pit Crew are recorded here.
 - Added OpenAI plugin packaging for the portable skill layer.
 - Added safe preview migration through exact historical path and hash ownership.
 - Added cross-platform validation, installer tests, CI, documentation, attribution, and security guidance.
+- Added a Windows local-drive mutation backend with pinned ancestry handles, reparse-point rejection, atomic replacement, exact-handle deletion, locking, backups, and rollback.
+- Added privilege-free Windows junction, ancestry-swap, lock-contention, unsafe-name, and uninstall-rollback coverage.
+- Completed the required OpenAI plugin manifest metadata and mirrored those requirements in strict validation.
+- Added clean-commit release archive construction, inventory verification, extracted-package testing, and SHA-256 checksums.
 - Recorded future host adapters as roadmap scope without claiming current support.

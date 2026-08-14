@@ -24,6 +24,8 @@ from pathlib import Path, PurePosixPath
 REPO_ROOT = Path(__file__).resolve().parents[1]
 INSTALLER = REPO_ROOT / "scripts" / "install_core.py"
 MANIFEST = json.loads((REPO_ROOT / "pitcrew-package.json").read_text(encoding="utf-8"))
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+import install_core
 
 
 def package_files() -> dict[tuple[str, str], bytes]:
@@ -160,7 +162,31 @@ def legacy_preview_files() -> dict[tuple[str, str], bytes]:
 LEGACY_PREVIEW_FILES = legacy_preview_files()
 
 
-@unittest.skipIf(os.name == "nt", "v0.1 mutation is fail-closed on Windows")
+class PathValidationTests(unittest.TestCase):
+    def test_windows_unsafe_relative_names_are_rejected_on_every_host(self) -> None:
+        unsafe = (
+            "CON.txt",
+            "com¹.log",
+            "LPT²",
+            "folder/trailing. ",
+            "folder/has?.md",
+            "folder/has*.md",
+            "folder/has|pipe.md",
+            "folder/control\x1f.md",
+            "C:/drive/path.md",
+            "folder/stream:name.md",
+            "folder\\backslash.md",
+        )
+        for value in unsafe:
+            with self.subTest(value=value):
+                with self.assertRaises(install_core.PackageError):
+                    install_core.validate_relative(value, "test path")
+
+    def test_normal_portable_relative_name_is_accepted(self) -> None:
+        value = "pitcrew-plan-delivery/references/planning-checklist.md"
+        self.assertEqual(value, install_core.validate_relative(value, "test path"))
+
+
 class InstallerTests(unittest.TestCase):
     maxDiff = None
 
@@ -286,6 +312,27 @@ class InstallerTests(unittest.TestCase):
             mtimes,
             {key: self.destination(roots, key).stat().st_mtime_ns for key in PACKAGE_FILES},
         )
+
+    def test_existing_lock_blocks_mutation_and_preserves_installed_files(self) -> None:
+        project = self.sandbox / "locked project"
+        project.mkdir()
+        first = self.install_project(project)
+        self.assertEqual(0, first.returncode, first.stderr)
+        roots = self.project_roots(project)
+        before = {key: self.destination(roots, key).read_bytes() for key in PACKAGE_FILES}
+        lock = project / ".cwc" / "codex-workflow-crew.lock"
+        lock.write_bytes(b"pid=someone-else\n")
+
+        result = self.install_project(project)
+
+        self.assertEqual(4, result.returncode, result.stderr)
+        self.assertIn("another install may be running", result.stderr)
+        self.assertEqual(
+            before,
+            {key: self.destination(roots, key).read_bytes() for key in PACKAGE_FILES},
+        )
+        self.assertEqual(b"pid=someone-else\n", lock.read_bytes())
+        lock.unlink()
 
     def test_unowned_conflict_aborts_before_any_package_file_is_written(self) -> None:
         project = self.sandbox / "atomic conflict"
@@ -507,6 +554,55 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual([sentinel], list(outside.iterdir()))
         self.assertFalse((project / ".cwc" / "codex-workflow-crew-state.json").exists())
 
+    @unittest.skipUnless(os.name == "nt", "Windows junction test")
+    def test_destination_junction_escape_is_rejected_without_symlink_privilege(self) -> None:
+        project = self.sandbox / "junction project"
+        project.mkdir()
+        outside = self.sandbox / "outside junction destination"
+        outside.mkdir()
+        sentinel = outside / "sentinel.txt"
+        sentinel.write_bytes(b"safe\n")
+        junction = project / ".codex"
+        created = subprocess.run(
+            ["cmd.exe", "/d", "/c", "mklink", "/J", str(junction), str(outside)],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=False,
+        )
+        self.assertEqual(0, created.returncode, created.stderr or created.stdout)
+        self.addCleanup(lambda: junction.exists() and junction.rmdir())
+
+        result = self.install_project(project)
+
+        self.assertEqual(4, result.returncode, result.stderr)
+        self.assertIn("reparse point", result.stderr)
+        self.assertEqual(b"safe\n", sentinel.read_bytes())
+        self.assertEqual([sentinel], list(outside.iterdir()))
+        self.assertFalse((project / ".cwc" / "codex-workflow-crew-state.json").exists())
+
+    @unittest.skipUnless(os.name == "nt", "Windows handle-pinning test")
+    def test_windows_atomic_write_pins_destination_ancestry_against_swap(self) -> None:
+        import windows_fs
+
+        parent = self.sandbox / "pinned ancestry" / "destination"
+        parent.mkdir(parents=True)
+        target = parent / "result.txt"
+        moved = parent.with_name("moved destination")
+        swap_attempted = False
+
+        def attempt_ancestry_swap() -> None:
+            nonlocal swap_attempted
+            swap_attempted = True
+            with self.assertRaises(OSError):
+                parent.rename(moved)
+
+        windows_fs.atomic_write(target, b"pinned\n", attempt_ancestry_swap)
+
+        self.assertTrue(swap_attempted)
+        self.assertEqual(b"pinned\n", target.read_bytes())
+        self.assertFalse(moved.exists())
+
     def test_manifest_cannot_target_path_absent_from_exact_ownership(self) -> None:
         copied_repo = self.sandbox / "modified package"
         shutil.copytree(REPO_ROOT, copied_repo, ignore=shutil.ignore_patterns(".git", "__pycache__"))
@@ -654,9 +750,6 @@ class InstallerTests(unittest.TestCase):
         self.assertFalse(state_path.exists())
 
     def test_mid_commit_failure_rolls_back_written_files(self) -> None:
-        sys.path.insert(0, str(REPO_ROOT / "scripts"))
-        import install_core
-
         project = self.sandbox / "rollback project"
         project.mkdir()
         real_atomic_write = install_core.atomic_write
@@ -679,6 +772,35 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual(5, result)
         self.assert_no_package_files(self.project_roots(project))
         self.assertFalse((project / ".cwc" / "codex-workflow-crew-state.json").exists())
+        self.assertFalse((project / ".cwc" / "codex-workflow-crew.lock").exists())
+
+    def test_mid_uninstall_failure_restores_removed_files_and_state(self) -> None:
+        project = self.sandbox / "uninstall rollback project"
+        project.mkdir()
+        installed = self.install_project(project)
+        self.assertEqual(0, installed.returncode, installed.stderr)
+        state_path = project / ".cwc" / "codex-workflow-crew-state.json"
+        original_state = state_path.read_bytes()
+        real_remove = install_core.remove_regular
+        calls = 0
+
+        def fail_once(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                raise install_core.InstallIOError("simulated uninstall failure")
+            return real_remove(*args, **kwargs)
+
+        with mock.patch.dict(os.environ, self.isolated_env(), clear=True):
+            with mock.patch.object(install_core, "remove_regular", side_effect=fail_once):
+                with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
+                    result = install_core.main(
+                        ["--scope", "project", "--project-dir", str(project), "--uninstall"]
+                    )
+
+        self.assertEqual(5, result)
+        self.assert_package_installed(self.project_roots(project))
+        self.assertEqual(original_state, state_path.read_bytes())
         self.assertFalse((project / ".cwc" / "codex-workflow-crew.lock").exists())
 
 

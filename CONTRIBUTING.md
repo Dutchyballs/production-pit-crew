@@ -21,6 +21,12 @@ bash -n scripts/install.sh
 
 On Windows, also exercise the PowerShell wrapper when it changes.
 
+Before publishing a candidate from a clean commit, build and verify the exact archive:
+
+```bash
+python3 scripts/build_release.py --output-dir dist --verify-extracted
+```
+
 Test installer work in a temporary directory or with `--dry-run`. Do not point development tests at a real user installation.
 
 ## Contribution rules
