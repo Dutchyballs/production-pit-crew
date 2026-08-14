@@ -401,6 +401,24 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual("mine\n", unrelated_skill.read_text(encoding="utf-8"))
         self.assertFalse((project / ".cwc" / "codex-workflow-crew-state.json").exists())
 
+    def test_clean_uninstall_can_be_reinstalled_without_force(self) -> None:
+        project = self.sandbox / "reinstall after uninstall"
+        project.mkdir()
+        installed = self.install_project(project)
+        self.assertEqual(0, installed.returncode, installed.stderr)
+
+        removed = self.install_project(project, "--uninstall")
+        self.assertEqual(0, removed.returncode, removed.stderr)
+        roots = self.project_roots(project)
+        self.assert_no_package_files(roots)
+        for skill in MANIFEST["skills"]:
+            self.assertTrue((roots["skills"] / skill["name"]).is_dir())
+
+        reinstalled = self.install_project(project)
+
+        self.assertEqual(0, reinstalled.returncode, reinstalled.stderr)
+        self.assert_package_installed(roots)
+
     def test_modified_installed_file_blocks_the_entire_uninstall(self) -> None:
         project = self.sandbox / "modified install"
         project.mkdir()

@@ -11,8 +11,8 @@ The repository root is `D:\production-pit-crew\production-pit-crew` on branch `m
 ## Verified in this workspace
 
 - `python scripts/validate.py --strict` passed: 4 agents, 4 skills, and 50 files checked.
-- `python -m unittest discover -s tests -v` passed: 44 tests run and 4 environment-specific symlink/Bash-platform tests skipped. All 19 installer mutation tests now run on Windows.
-- Windows-focused coverage passed for junction escape rejection without symlink privilege, pinned-ancestry rename resistance, unsafe Windows names, lock contention, rollback during install and uninstall, user and project scope, Unicode paths, conflicts, force backups, migration, tampered state, repeat install, and exact-file uninstall.
+- `python -m unittest discover -s tests -v` passed: 45 tests run and 4 environment-specific symlink/Bash-platform tests skipped. All installer mutation tests now run on Windows.
+- Windows-focused coverage passed for junction escape rejection without symlink privilege, pinned-ancestry rename resistance, unsafe Windows names, lock contention, rollback during install and uninstall, user and project scope, Unicode paths, conflicts, force backups, migration, tampered state, repeat install, clean uninstall/reinstall, and exact-file uninstall.
 - Windows PowerShell 5.1 completed a real disposable project install and uninstall. Git for Windows Bash passed syntax checking and the same real disposable lifecycle.
 - `python -m compileall -q scripts tests` passed.
 - OpenAI's official plugin validator passed the repository manifest. The CI YAML parsed successfully.

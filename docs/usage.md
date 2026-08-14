@@ -94,6 +94,8 @@ Then uninstall:
 
 Uninstall uses exact-file ownership plus trusted current or historical package hashes. Unrelated files and every directory are left alone, and modified managed files stop normal removal rather than being silently deleted. Use force only after inspecting the reported path and preserving any wanted changes.
 
+Because directories are deliberately preserved, a later reinstall may reuse a safe existing skill directory tree only when it contains no files. A non-empty unowned skill directory remains a conflict unless the operator explicitly uses force.
+
 ## Use the skills directly
 
 Mention a skill by name and provide the real task context.

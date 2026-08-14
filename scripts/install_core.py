@@ -593,6 +593,32 @@ def state_entries(state: dict | None) -> dict[tuple[str, str], dict]:
     return {(item["root"], item["relative"]): item for item in state["entries"]}
 
 
+def safe_directory_tree_is_empty(root: Path) -> bool:
+    """Return true only for a directory tree containing no files or unsafe entries."""
+
+    stack = [root]
+    while stack:
+        current = stack.pop()
+        try:
+            children = list(current.iterdir())
+        except OSError as exc:
+            raise InstallIOError(f"cannot inspect existing skill directory {current}: {exc}") from exc
+        for child in children:
+            if is_linklike(child):
+                raise ConflictError(
+                    f"existing skill directory contains a symlink or reparse point: {child}"
+                )
+            try:
+                info = child.stat()
+            except OSError as exc:
+                raise InstallIOError(f"cannot inspect existing skill path {child}: {exc}") from exc
+            if stat.S_ISDIR(info.st_mode):
+                stack.append(child)
+            else:
+                return False
+    return True
+
+
 def preflight_install(
     entries: list[Entry],
     old_state: dict | None,
@@ -612,9 +638,13 @@ def preflight_install(
         if skill_root.exists() or is_linklike(skill_root):
             if is_linklike(skill_root) or not skill_root.is_dir():
                 raise ConflictError(f"skill destination is not a safe directory: {skill_root}")
-            if skill_name not in old_skill_names and not force:
+            if (
+                skill_name not in old_skill_names
+                and not force
+                and not safe_directory_tree_is_empty(skill_root)
+            ):
                 raise ConflictError(
-                    f"skill directory already exists and is not owned by this installation: {skill_root}; use --force to merge exact package files"
+                    f"skill directory already exists, contains files, and is not owned by this installation: {skill_root}; use --force to merge exact package files"
                 )
 
     for entry in entries:
