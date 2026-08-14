@@ -4,54 +4,58 @@ Last reconciled: 14 August 2026 (Australia/Sydney)
 
 ## Current state
 
-Production Pit Crew is an unreleased `0.1.0` candidate containing four portable Agent Skills and four Codex custom agents. The package manifest, plugin manifest, ownership allowlist, documentation, validation tooling, installer wrappers, tests, and CI workflow are present and internally consistent.
+Production Pit Crew is an unreleased `0.1.0` release candidate containing four portable Agent Skills and four Codex custom agents. The Windows filesystem blocker is resolved in implementation commit `9563267` (`feat: complete safe Windows release path`). The shared installer now supports project and user install, upgrade, targeted force with backups, rollback, locking, and precise uninstall on Windows local-drive paths as well as the existing macOS/Linux path.
 
-The repository root is `D:\production-pit-crew\production-pit-crew` in this workspace. A new local Git repository was initialised on `main`, with import baseline commit `fce8f8f` (`chore: import Production Pit Crew snapshot`). No Git remote is configured, and this new history is not the original development history.
-
-The supplied historical handover identifies `ea40d11` as the last independently reviewed commit in the original development workspace. It reports that candidate passed the complete 31-test suite, skill validation, compilation, Bash checks, Git checks, a 20-file legacy migration rehearsal, and an independent release gate. This ZIP does not contain the original `.git` data, so that commit identity and evidence are useful provenance notes but cannot be independently verified from this copy.
+The repository root is `D:\production-pit-crew\production-pit-crew` on branch `main`. This workspace has a newly initialised local history rather than the original development history. Its import baseline is `fce8f8f`, the reconciled-handover baseline is `6244c2e`, and the Windows/release implementation is `9563267`. No Git remote is configured.
 
 ## Verified in this workspace
 
-- `python scripts/validate.py --strict` passed: 4 agents, 4 skills, and 45 files checked, including this handover.
-- `python -m unittest discover -s tests -v` passed: 31 tests run, 21 skipped as expected on this Windows environment. Nineteen installer mutation tests are intentionally skipped because v0.1 currently fails closed on Windows; two symlink tests were skipped because symlink creation is unavailable.
-- `powershell -File .\scripts\install.ps1 -Scope Project -ProjectDir <temporary-directory> -DryRun` passed and reported zero writes.
+- `python scripts/validate.py --strict` passed: 4 agents, 4 skills, and 48 files checked.
+- `python -m unittest discover -s tests -v` passed: 43 tests run and 4 environment-specific symlink/Bash-platform tests skipped. All 19 installer mutation tests now run on Windows.
+- Windows-focused coverage passed for junction escape rejection without symlink privilege, pinned-ancestry rename resistance, unsafe Windows names, lock contention, rollback during install and uninstall, user and project scope, Unicode paths, conflicts, force backups, migration, tampered state, repeat install, and exact-file uninstall.
+- Windows PowerShell 5.1 completed a real disposable project install and uninstall. Git for Windows Bash passed syntax checking and the same real disposable lifecycle.
+- `python -m compileall -q scripts tests` passed.
+- OpenAI's official plugin validator passed the repository manifest. The CI YAML parsed successfully.
+- Codex Security diff scan `648ee5ca-4af7-42bd-bf52-de095f830af2` completed with full coverage of the five security-sensitive changed files and zero findings against exact range `6244c2e..9563267`.
 - Package and plugin versions both report `0.1.0`.
 
-## Not verified here
+All tests used isolated temporary homes and projects. Jason's real Codex configuration was not modified.
 
-- `bash -n scripts/install.sh` and the Bash dry run could not run because the available WSL Bash service returned `E_ACCESSDENIED`.
-- PowerShell 7 (`pwsh`) is not installed; the wrapper was exercised with Windows PowerShell 5.1.
-- Current CI, real POSIX install/upgrade/uninstall behavior, local plugin-marketplace loading, signed or checksummed release archives, and end-to-end Codex discovery were not run from this snapshot.
-- No public publication or production release was performed.
+## Release tooling and three-operating-system state
+
+The CI workflow covers Ubuntu, macOS, and Windows on Python 3.11 plus the current Python 3 release. It runs strict validation and the full unit suite on all three operating systems, real Bash install/uninstall lifecycles on Ubuntu and macOS, and real Windows PowerShell 5.1 and PowerShell 7 lifecycles on Windows.
+
+`scripts/build_release.py` refuses a dirty worktree, archives the exact Git commit, verifies CRC and the complete tracked-file inventory, rejects unsafe archive paths/runtime data, writes `SHA256SUMS`, extracts the archive, and reruns strict validation plus all tests. CI uploads only the verified ZIP and checksum after every operating-system job passes.
+
+## Not yet verified
+
+- The updated CI has not run because this local repository has no remote. Native macOS and Linux results therefore remain pending even though their test jobs and real wrapper lifecycles are defined.
+- PowerShell 7 is not installed locally; Windows PowerShell 5.1 is verified here and PowerShell 7 is covered by the pending Windows CI job.
+- Local Codex plugin-marketplace installation and fresh-session discovery could not be exercised because the desktop-bundled `codex.exe` is inaccessible through the WindowsApps ACL in this environment. The official manifest validator did pass, and the skills were used directly from the repository.
+- Jason's end-user acceptance check is pending.
+- No push, tag, publication, or public release has been performed.
 
 ## Release status
 
-`0.1.0` remains under development. Do not tag, publish, or describe this snapshot as the finished release. The current release decision is **HOLD** because native Windows mutation is deliberately disabled and cross-platform/current CI evidence is incomplete.
+The candidate is **locally ready but the v0.1 release remains HOLD**. The previous Windows implementation blocker is closed. The remaining release conditions are current green CI on Ubuntu, macOS, and Windows; a supported Codex install/discovery smoke test; Jason's acceptance; and explicit approval to tag or publish.
 
-The release requires safe Windows install, upgrade, targeted force with backups, rollback, locking, and precise uninstall; green tests and CI on all supported operating systems; matching documentation and manifests; a clean Git tree; an independent release PASS; and Jason's acceptance test and approval.
-
-## Active development objective
-
-Implement the native, reparse-safe Windows mutation backend in the shared dependency-free Python installer core. Keep Bash and PowerShell as thin wrappers over the same behavior.
-
-The implementation must preserve the existing fail-closed protections: exact ownership, full preflight before writes, safe path containment, rejection of symlinks/junctions/reparse escapes and unsafe Windows path forms, apply-time rechecks, atomic same-filesystem staging where supported, conflict backups, rollback, untrusted-state validation, exact-file uninstall, preservation of user files, and an exclusive mutation lock.
-
-Remove the broad Windows mutation test skips only after this behavior has real focused coverage, including project and user install, dry run, repeat install, conflicts, targeted force, uninstall, tampered state, Unicode paths, rollback, locking, legacy migration, reserved/drive/UNC/ADS paths, case collisions, and reparse-point race or escape scenarios.
+Do not describe `0.1.0` as released until those conditions pass. Missing remote or host evidence must remain pending rather than being inferred from local Windows results.
 
 ## Important boundaries
 
-- Windows install and uninstall mutation must remain disabled until the new backend is proven safe. Windows validation and dry run are currently supported.
-- Tests must use isolated temporary homes and must never touch Jason's real Codex configuration.
-- The parent Codex session orchestrates the workflow. Pack agents do not spawn other agents and do not claim autonomous coordination or persistent memory.
-- Missing runtime evidence remains unverified or blocked; it must not be converted into a pass.
-- Preserve attribution, MIT licensing, third-party notices, and non-affiliation wording.
+- Windows automatic mutation supports absolute local-drive paths only. UNC paths, symlinks, junctions, and all other reparse-point ancestry fail closed.
+- `--force` can replace a targeted unmanaged conflict only after creating an exclusive backup. It never bypasses path, ownership, locking, reparse, or digest protections.
+- Uninstall removes only exact managed files that still match trusted recorded content and preserves unrelated or modified user files.
+- Tests must remain isolated and must never target a real user Codex setup.
+- The parent Codex session orchestrates the workflow. Pack agents do not spawn one another or claim autonomous coordination or persistent memory.
+- Preserve MIT licensing, attribution, third-party notices, security guidance, and non-affiliation wording.
 - Do not push, publish, tag, or create a public release without Jason's explicit approval.
 
 ## Next bounded step
 
-Use `pitcrew-plan-delivery` to inspect `scripts/install_core.py` and `tests/test_installer.py`, map the existing POSIX safety model, and produce an implementation contract for the Windows backend before changing installer behavior. Then implement and verify the smallest complete Windows safety slice.
+Configure an approved Git remote and run the existing CI workflow. If all three operating systems pass, install the verified candidate through a supported Codex plugin/adapter path, start a fresh task, confirm the four skills and four agents are discoverable, and complete Jason's short acceptance workflow. Then run `pitcrew-gate-release` against the exact candidate commit and evidence before any tag or publication.
 
-Start a fresh task by reading, in order:
+Start a continuation by reading, in order:
 
 1. `AGENTS.md`
 2. this handover
