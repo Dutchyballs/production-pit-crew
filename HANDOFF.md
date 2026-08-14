@@ -39,7 +39,7 @@ Repository text is pinned to LF through `.gitattributes` so Git archives contain
 
 ## Release status
 
-The candidate is **locally ready but the v0.1 release remains HOLD**. The previous Windows implementation blocker is closed. The remaining release conditions are current green CI on Ubuntu, macOS, and Windows; a supported Codex install/discovery smoke test; Jason's acceptance; and explicit approval to tag or publish.
+The candidate is **locally ready but the v0.1 release decision is BLOCKED on missing external evidence**. This is not a known product failure: the previous Windows implementation blocker is closed. A final PASS or HOLD cannot be decided until there is current green CI on Ubuntu, macOS, and Windows, a supported Codex install/discovery smoke test, Jason's acceptance, and explicit approval to tag or publish.
 
 Do not describe `0.1.0` as released until those conditions pass. Missing remote or host evidence must remain pending rather than being inferred from local Windows results.
 
