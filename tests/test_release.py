@@ -55,6 +55,42 @@ class ReleaseArchiveTests(unittest.TestCase):
                     {"README.md", "LICENSE"},
                 )
 
+    def test_archive_requires_executable_bash_wrapper_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            archive = Path(temporary) / "non-executable.zip"
+            member = zipfile.ZipInfo(
+                "production-pit-crew-0.1.0/scripts/install.sh"
+            )
+            member.create_system = 3
+            member.external_attr = 0o100644 << 16
+            with zipfile.ZipFile(archive, "w") as bundle:
+                bundle.writestr(member, b"#!/usr/bin/env bash\n")
+            with self.assertRaisesRegex(
+                BUILD_RELEASE.ReleaseError,
+                "executable metadata is missing",
+            ):
+                BUILD_RELEASE.verify_archive(
+                    archive,
+                    "production-pit-crew-0.1.0/",
+                    {"scripts/install.sh"},
+                )
+
+    def test_archive_accepts_executable_bash_wrapper_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            archive = Path(temporary) / "executable.zip"
+            member = zipfile.ZipInfo(
+                "production-pit-crew-0.1.0/scripts/install.sh"
+            )
+            member.create_system = 3
+            member.external_attr = 0o100755 << 16
+            with zipfile.ZipFile(archive, "w") as bundle:
+                bundle.writestr(member, b"#!/usr/bin/env bash\n")
+            BUILD_RELEASE.verify_archive(
+                archive,
+                "production-pit-crew-0.1.0/",
+                {"scripts/install.sh"},
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

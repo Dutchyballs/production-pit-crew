@@ -6,17 +6,18 @@ Last reconciled: 14 August 2026 (Australia/Sydney)
 
 Production Pit Crew is an unreleased `0.1.0` release candidate containing four portable Agent Skills and four Codex custom agents. The Windows filesystem blocker is resolved in implementation commit `af34771` (`feat: complete safe Windows release path`), and clean uninstall/reinstall is resolved in `67786e0`. The shared installer supports project and user install, upgrade, targeted force with backups, rollback, locking, and precise uninstall on Windows local-drive paths as well as the existing macOS/Linux path.
 
-The repository root is `D:\production-pit-crew\production-pit-crew` on branch `main`. This workspace has a newly initialised local history rather than the original development history. Its import baseline is `a21ff37`, the reconciled-handover baseline is `ea42aa7`, the Windows implementation is `af34771`, licensing/provenance is `35ce64e`, and publication hardening is `ab192b8`. Every reachable commit uses GitHub noreply email for both author and committer. No Git remote is configured.
+The repository root is `D:\production-pit-crew\production-pit-crew` on branch `main`. This workspace has a newly initialised local history rather than the original development history. Its import baseline is `a21ff37`, the reconciled-handover baseline is `ea42aa7`, the Windows implementation is `af34771`, licensing/provenance is `35ce64e`, publication hardening is `ab192b8`, and the Unix executable-mode fix is `abc3f01`. Every reachable commit uses GitHub noreply email for both author and committer. The private GitHub remote is `https://github.com/Dutchyballs/production-pit-crew`.
 
 ## Verified in this workspace
 
 - `python scripts/validate.py --strict` passed: 4 agents, 4 skills, and 50 files checked.
-- `python -m unittest discover -s tests -v` passed: 45 tests run and 4 environment-specific symlink/Bash-platform tests skipped. All installer mutation tests now run on Windows.
+- `python -m unittest discover -s tests -v` passed: 47 tests run and 4 environment-specific symlink/Bash-platform tests skipped. All installer mutation tests now run on Windows.
 - Windows-focused coverage passed for junction escape rejection without symlink privilege, pinned-ancestry rename resistance, unsafe Windows names, lock contention, rollback during install and uninstall, user and project scope, Unicode paths, conflicts, force backups, migration, tampered state, repeat install, clean uninstall/reinstall, and exact-file uninstall.
 - Windows PowerShell 5.1 completed a real disposable project install, repeat install, uninstall, clean reinstall, and final inventory verification. Git for Windows Bash passed syntax checking and its supported disposable lifecycle.
 - `python -m compileall -q scripts tests` passed.
 - OpenAI's official plugin validator passed the repository manifest. The CI YAML parsed successfully.
 - The official Codex CLI `0.147.0` discovered all four project skills from a clean installed copy. In an ephemeral read-only session it also successfully spawned each of the four project custom-agent types without running shell commands or changing project files.
+- Private GitHub Actions run `31800577242` passed the complete Ubuntu, macOS, and Windows matrix. All six Python validation/test jobs passed, the Bash lifecycle passed on Ubuntu and macOS, both Windows PowerShell 5.1 and PowerShell 7 lifecycles passed, and the exact-commit release archive was built, verified, and uploaded as a private workflow artifact.
 - The project MIT licence, complete Agency Agents MIT notice, and origin/ownership/claims record are present and enforced by strict validation.
 - Pre-rewrite Codex Security scans completed with full coverage and zero findings for both the Windows mutation implementation and the clean-reinstall fix. A fresh bounded scan of the rewritten release-candidate line also completed with full coverage and zero findings; it must be repeated after any further tracked change.
 - Package and plugin versions both report `0.1.0`.
@@ -27,20 +28,18 @@ Installer and package tests used isolated temporary homes and projects. The live
 
 The CI workflow covers Ubuntu, macOS, and Windows on Python 3.11 plus the current Python 3 release. It runs strict validation and the full unit suite on all three operating systems. Every native wrapper job performs install, repeat install, uninstall, clean reinstall, and final uninstall through Bash on Ubuntu/macOS and Windows PowerShell 5.1 plus PowerShell 7 on Windows. All third-party GitHub Actions are pinned to immutable full commit SHAs.
 
-`scripts/build_release.py` refuses a dirty worktree, archives the exact Git commit, verifies CRC and the complete tracked-file inventory, rejects unsafe archive paths/runtime data, writes `SHA256SUMS`, extracts the archive, and reruns strict validation plus all tests. CI uploads only the verified ZIP and checksum after every operating-system job passes.
+`scripts/build_release.py` refuses a dirty worktree, archives the exact Git commit, verifies CRC, the complete tracked-file inventory, and the Bash wrapper's executable metadata, rejects unsafe archive paths/runtime data, writes `SHA256SUMS`, extracts the archive, and reruns strict validation plus all tests. CI uploads only the verified ZIP and checksum after every operating-system job passes.
 
 Repository text is pinned to LF through `.gitattributes` so Git archives contain the same migration-sensitive bytes on Windows, macOS, and Linux.
 
 ## Not yet verified
 
-- The updated CI has not run because this local repository has no remote. Native macOS and Linux results therefore remain pending even though their test jobs and complete wrapper lifecycles are defined.
-- PowerShell 7 is not installed locally; Windows PowerShell 5.1 is verified here and PowerShell 7 is covered by the pending Windows CI job.
 - Jason's end-user acceptance check is pending.
-- No push, tag, publication, or public release has been performed.
+- The repository is private and `main` has been pushed. No tag, public publication, or GitHub Release has been performed.
 
 ## Release status
 
-The candidate is **locally ready but the v0.1 release decision is on HOLD for missing external evidence**. This is not a known product failure: the previous Windows implementation blocker is closed, and supported Codex skill/custom-agent discovery now passes locally. A final PASS cannot be decided until there is current green CI on Ubuntu, macOS, and Windows, Jason's acceptance, and explicit approval to tag or publish.
+The candidate is **technically ready but the v0.1 release decision remains on HOLD for Jason's acceptance and explicit publication approval**. The previous Windows implementation blocker is closed, supported Codex skill/custom-agent discovery passes locally, and current native CI is green on Ubuntu, macOS, and Windows.
 
 Do not describe `0.1.0` as released until those conditions pass. Missing remote or host evidence must remain pending rather than being inferred from local Windows results.
 
@@ -56,7 +55,7 @@ Do not describe `0.1.0` as released until those conditions pass. Missing remote 
 
 ## Next bounded step
 
-Regenerate the exact archive, checksum, final security scan, and physical Windows proof after this handover update. Then configure the approved private Git remote and run the existing CI workflow. If all three operating systems pass, complete Jason's short acceptance workflow and run `pitcrew-gate-release` against the exact candidate commit and evidence before any tag or public release.
+Commit this reconciliation, regenerate the exact archive, checksum, final security scan, and physical Windows proof, then require one final green CI run for that exact commit. Complete Jason's short acceptance workflow and run `pitcrew-gate-release` against the exact candidate and evidence before any tag or public release.
 
 Start a continuation by reading, in order:
 

@@ -34,7 +34,7 @@ Requirements: Python 3.11 or newer, plus Bash on macOS/Linux or Windows PowerShe
 Install into the current project:
 
 ```bash
-./scripts/install.sh --scope project --project-dir .
+bash scripts/install.sh --scope project --project-dir .
 ```
 
 Install into the current project on Windows:
@@ -46,7 +46,7 @@ powershell -File .\scripts\install.ps1 -Scope Project -ProjectDir .
 Install for the current user:
 
 ```bash
-./scripts/install.sh --scope user
+bash scripts/install.sh --scope user
 ```
 
 ```powershell

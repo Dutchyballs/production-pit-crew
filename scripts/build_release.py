@@ -14,6 +14,7 @@ from pathlib import Path, PurePosixPath
 
 
 PACK_ID = "production-pit-crew"
+REQUIRED_EXECUTABLES = {"scripts/install.sh"}
 
 
 class ReleaseError(RuntimeError):
@@ -78,6 +79,12 @@ def verify_archive(archive: Path, prefix: str, expected_files: set[str]) -> None
                 relative = PurePosixPath(*parts[1:]).as_posix()
                 if relative.startswith((".git/", ".cwc/", ".pitcrew/", "dist/")):
                     raise ReleaseError(f"archive contains excluded runtime data: {relative}")
+                if relative in REQUIRED_EXECUTABLES:
+                    unix_mode = (info.external_attr >> 16) & 0xFFFF
+                    if info.create_system != 3 or not unix_mode & 0o111:
+                        raise ReleaseError(
+                            f"archive executable metadata is missing for: {relative}"
+                        )
                 actual_files.add(relative)
     except (OSError, zipfile.BadZipFile) as exc:
         raise ReleaseError(f"cannot verify release archive {archive}: {exc}") from exc

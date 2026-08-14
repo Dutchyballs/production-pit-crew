@@ -31,7 +31,7 @@ The skills carry the reusable workflow. The custom agents add independent delega
 Preview a project installation without writing:
 
 ```bash
-./scripts/install.sh --scope project --project-dir . --dry-run
+bash scripts/install.sh --scope project --project-dir . --dry-run
 ```
 
 ```powershell
@@ -41,7 +41,7 @@ pwsh -File .\scripts\install.ps1 -Scope project -ProjectDir . -DryRun
 Install after reviewing the plan:
 
 ```bash
-./scripts/install.sh --scope project --project-dir .
+bash scripts/install.sh --scope project --project-dir .
 ```
 
 ```powershell
@@ -51,7 +51,7 @@ powershell -File .\scripts\install.ps1 -Scope Project -ProjectDir .
 For a user installation:
 
 ```bash
-./scripts/install.sh --scope user
+bash scripts/install.sh --scope user
 ```
 
 ```powershell
@@ -83,13 +83,13 @@ On Windows, `--force` likewise does not bypass reparse-point, local-drive, exact
 Preview first:
 
 ```bash
-./scripts/install.sh --scope project --project-dir . --uninstall --dry-run
+bash scripts/install.sh --scope project --project-dir . --uninstall --dry-run
 ```
 
 Then uninstall:
 
 ```bash
-./scripts/install.sh --scope project --project-dir . --uninstall
+bash scripts/install.sh --scope project --project-dir . --uninstall
 ```
 
 Uninstall uses exact-file ownership plus trusted current or historical package hashes. Unrelated files and every directory are left alone, and modified managed files stop normal removal rather than being silently deleted. Use force only after inspecting the reported path and preserving any wanted changes.

@@ -18,4 +18,6 @@ All notable changes to Production Pit Crew are recorded here.
 - Tightened the origin record so copyright claims cover the original software, documentation, assets, and arrangement without treating the product name itself as a copyright work.
 - Verified supported Codex CLI discovery for all four project skills and successful spawning of all four custom-agent types from an isolated installed copy.
 - Made the historical migration fixture canonicalize known text assets to LF so stale Windows checkout line endings cannot create false hash failures.
+- Preserved the Bash installer executable bit, verified that metadata in release ZIPs, and documented a Bash invocation that remains reliable when an extractor does not restore Unix permissions.
+- Passed the complete private GitHub Actions matrix on Ubuntu, macOS, and Windows, including Bash, Windows PowerShell 5.1, and PowerShell 7 install/reinstall lifecycles.
 - Recorded future host adapters as roadmap scope without claiming current support.
