@@ -1,0 +1,6 @@
+interface:
+  display_name: "Pit Crew Verify Browser"
+  short_description: "Test UI journeys with honest evidence"
+  default_prompt: "Use $pitcrew-verify-browser to verify this interface across real browser journeys and viewports."
+  icon_small: "./assets/icon.svg"
+  icon_large: "./assets/icon.svg"

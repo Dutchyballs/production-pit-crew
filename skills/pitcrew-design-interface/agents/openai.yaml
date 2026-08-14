@@ -1,0 +1,6 @@
+interface:
+  display_name: "Pit Crew Design Interface"
+  short_description: "Define product-specific UI direction"
+  default_prompt: "Use $pitcrew-design-interface to define a product-specific, implementation-ready interface contract."
+  icon_small: "./assets/icon.svg"
+  icon_large: "./assets/icon.svg"

@@ -1,0 +1,6 @@
+interface:
+  display_name: "Pit Crew Plan Delivery"
+  short_description: "Turn product ideas into build-ready plans"
+  default_prompt: "Use $pitcrew-plan-delivery to turn this idea into a scoped, testable delivery plan."
+  icon_small: "./assets/icon.svg"
+  icon_large: "./assets/icon.svg"

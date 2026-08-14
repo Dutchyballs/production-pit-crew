@@ -1,0 +1,28 @@
+# Production Pit Crew runtime state and retained evidence
+.cwc/
+.pitcrew/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Build and local packaging output
+build/
+dist/
+*.tar.gz
+*.zip
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo

@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "pack_id": "production-pit-crew",
+  "version": "0.1.0",
+  "agents": [
+    {
+      "name": "pitcrew_product_designer",
+      "source": "agents/pitcrew_product_designer.toml",
+      "target": "pitcrew_product_designer.toml"
+    },
+    {
+      "name": "pitcrew_browser_verifier",
+      "source": "agents/pitcrew_browser_verifier.toml",
+      "target": "pitcrew_browser_verifier.toml"
+    },
+    {
+      "name": "pitcrew_ui_critic",
+      "source": "agents/pitcrew_ui_critic.toml",
+      "target": "pitcrew_ui_critic.toml"
+    },
+    {
+      "name": "pitcrew_change_reviewer",
+      "source": "agents/pitcrew_change_reviewer.toml",
+      "target": "pitcrew_change_reviewer.toml"
+    }
+  ],
+  "skills": [
+    {
+      "name": "pitcrew-plan-delivery",
+      "source": "skills/pitcrew-plan-delivery"
+    },
+    {
+      "name": "pitcrew-design-interface",
+      "source": "skills/pitcrew-design-interface"
+    },
+    {
+      "name": "pitcrew-verify-browser",
+      "source": "skills/pitcrew-verify-browser"
+    },
+    {
+      "name": "pitcrew-gate-release",
+      "source": "skills/pitcrew-gate-release"
+    }
+  ]
+}

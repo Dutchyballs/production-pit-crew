@@ -1,0 +1,6 @@
+interface:
+  display_name: "Pit Crew Gate Release"
+  short_description: "Make evidence-based release decisions"
+  default_prompt: "Use $pitcrew-gate-release to make an evidence-based release decision for this candidate."
+  icon_small: "./assets/icon.svg"
+  icon_large: "./assets/icon.svg"

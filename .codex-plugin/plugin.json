@@ -1,0 +1,13 @@
+{
+  "name": "production-pit-crew",
+  "version": "0.1.0",
+  "description": "Plan, design, verify, review, and gate production-quality software with focused evidence-driven skills.",
+  "license": "MIT",
+  "keywords": ["software-delivery", "product-design", "browser-testing", "release-gates"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Production Pit Crew",
+    "shortDescription": "Plan, design, verify, and gate software",
+    "longDescription": "An evidence-driven software delivery crew for planning, interface design, browser verification, independent review, and release decisions."
+  }
+}

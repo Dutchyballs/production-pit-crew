@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python: ["3.11", "3.x"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Validate package
+        run: python scripts/validate.py --strict
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
+  wrappers:
+    name: Wrapper smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Bash syntax and dry run
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          bash -n scripts/install.sh
+          project_dir="$(mktemp -d)"
+          ./scripts/install.sh --scope project --project-dir "$project_dir" --dry-run
+      - name: PowerShell dry run
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $projectDir = Join-Path $env:RUNNER_TEMP "pitcrew wrapper smoke"
+          New-Item -ItemType Directory -Force -Path $projectDir | Out-Null
+          .\scripts\install.ps1 -Scope Project -ProjectDir $projectDir -DryRun
+      - name: pwsh dry run
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $projectDir = Join-Path $env:RUNNER_TEMP "pitcrew pwsh smoke"
+          New-Item -ItemType Directory -Force -Path $projectDir | Out-Null
+          .\scripts\install.ps1 -Scope Project -ProjectDir $projectDir -DryRun
