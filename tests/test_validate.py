@@ -139,6 +139,22 @@ class ValidatorTests(unittest.TestCase):
         report = VALIDATE.validate_repo(repo)
         self.assertTrue(any("broken local link" in error for error in report.errors))
 
+    def test_missing_upstream_licence_notice_fails(self) -> None:
+        temporary, repo = self.copy_repo()
+        self.addCleanup(temporary.cleanup)
+        notices = repo / "THIRD_PARTY_NOTICES.md"
+        notices.write_text(
+            notices.read_text(encoding="utf-8").replace(
+                "Copyright (c) 2025 AgentLand Contributors",
+                "upstream copyright omitted",
+            ),
+            encoding="utf-8",
+        )
+
+        report = VALIDATE.validate_repo(repo)
+
+        self.assertTrue(any("required legal notice is missing" in error for error in report.errors))
+
     def test_symlink_in_skill_fails(self) -> None:
         temporary, repo = self.copy_repo()
         self.addCleanup(temporary.cleanup)

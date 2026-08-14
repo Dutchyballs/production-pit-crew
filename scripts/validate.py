@@ -22,7 +22,7 @@ AGENT_REQUIRED = {"name", "description", "developer_instructions"}
 ALLOWED_SANDBOXES = {"read-only", "workspace-write", "danger-full-access"}
 FRONTMATTER_KEYS = {"name", "description"}
 MARKDOWN_LINK = re.compile(r"(?<!!)\[[^\]]*\]\(([^)]+)\)")
-IGNORED_DIRS = {".git", ".cwc", ".pitcrew", "__pycache__"}
+IGNORED_DIRS = {".git", ".cwc", ".pitcrew", "__pycache__", "dist"}
 PLUGIN_MANIFEST = ".codex-plugin/plugin.json"
 PLUGIN_REQUIRED_KEYS = {"name", "version", "description", "author", "skills", "interface"}
 PLUGIN_ALLOWED_KEYS = PLUGIN_REQUIRED_KEYS | {
@@ -378,6 +378,39 @@ def validate_markdown_links(repo: Path, report: Report) -> None:
                 report.error(f"{path.relative_to(repo)}: broken local link: {raw}")
 
 
+def validate_legal_notices(repo: Path, report: Report) -> None:
+    required_fragments = {
+        "LICENSE": (
+            "MIT License",
+            "Copyright (c) 2026 Jason Darlington and Production Pit Crew contributors",
+            "Permission is hereby granted, free of charge",
+            'THE SOFTWARE IS PROVIDED "AS IS"',
+        ),
+        "THIRD_PARTY_NOTICES.md": (
+            "Copyright (c) 2025 AgentLand Contributors",
+            "Permission is hereby granted, free of charge",
+            "github.com/msitarzewski/agency-agents",
+            "not affiliated with, sponsored by, or endorsed",
+        ),
+        "docs/origin-and-claims.md": (
+            "What is original to this project",
+            "What informed the project",
+            "Safe public wording",
+            "THIRD_PARTY_NOTICES.md",
+        ),
+    }
+    for relative, fragments in required_fragments.items():
+        path = repo / relative
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            report.error(f"{relative}: required legal record cannot be read: {exc}")
+            continue
+        for fragment in fragments:
+            if fragment not in text:
+                report.error(f"{relative}: required legal notice is missing: {fragment!r}")
+
+
 def lint_prompts(repo: Path, report: Report) -> None:
     prompt_files = list((repo / "agents").glob("*.toml")) + list((repo / "skills").glob("*/SKILL.md"))
     for path in prompt_files:
@@ -392,7 +425,12 @@ def lint_prompts(repo: Path, report: Report) -> None:
 
 
 def validate_python(repo: Path, report: Report) -> None:
-    for relative in ("scripts/install_core.py", "scripts/validate.py"):
+    for relative in (
+        "scripts/build_release.py",
+        "scripts/install_core.py",
+        "scripts/validate.py",
+        "scripts/windows_fs.py",
+    ):
         path = repo / relative
         if not path.is_file():
             report.error(f"{relative}: required script is missing")
@@ -413,6 +451,7 @@ def validate_repo(repo: Path, strict: bool = False) -> Report:
     validate_skills(repo, manifest, report)
     validate_filesystem(repo, report)
     validate_markdown_links(repo, report)
+    validate_legal_notices(repo, report)
     lint_prompts(repo, report)
     validate_python(repo, report)
     if strict and report.warnings:

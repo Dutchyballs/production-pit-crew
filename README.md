@@ -127,4 +127,4 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing pack behavior. Report se
 
 ## License
 
-Production Pit Crew is available under the [MIT License](LICENSE). Upstream attribution is recorded in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Production Pit Crew is available under the [MIT License](LICENSE). Upstream attribution and the complete upstream MIT notice are recorded in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). The plain-English [origin, ownership, attribution, and claims record](docs/origin-and-claims.md) explains what is original here, what informed it, and what the project should not claim.
