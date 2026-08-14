@@ -2,6 +2,8 @@
   "name": "production-pit-crew",
   "version": "0.1.0",
   "description": "Plan, design, verify, review, and gate production-quality software with focused evidence-driven skills.",
+  "homepage": "https://github.com/Dutchyballs/production-pit-crew",
+  "repository": "https://github.com/Dutchyballs/production-pit-crew",
   "author": {
     "name": "Production Pit Crew contributors"
   },

@@ -14,4 +14,6 @@ All notable changes to Production Pit Crew are recorded here.
 - Completed the required OpenAI plugin manifest metadata and mirrored those requirements in strict validation.
 - Added clean-commit release archive construction, inventory verification, extracted-package testing, and SHA-256 checksums.
 - Allowed a clean uninstall to be reinstalled without force by safely reusing only file-empty, non-link skill directory trees.
+- Extended every native wrapper smoke test through repeat install and clean reinstall, pinned CI actions to immutable commits, and hardened local secret ignores.
+- Tightened the origin record so copyright claims cover the original software, documentation, assets, and arrangement without treating the product name itself as a copyright work.
 - Recorded future host adapters as roadmap scope without claiming current support.

@@ -8,10 +8,12 @@ lawyer in a particular country.
 ## What is original to this project
 
 The project claims copyright in its original expression and implementation,
-including the Production Pit Crew name and documentation, the selected four-role
-workflow, the Codex agent and Agent Skill adaptations, the dependency-free safe
-installer, Windows handle-pinned filesystem adapter, ownership/state format,
-validation suite, release builder, tests, and CI configuration.
+including its code, documentation, original project assets, the selected and
+arranged four-role workflow, the Codex agent and Agent Skill adaptations, the
+dependency-free safe installer, Windows handle-pinned filesystem adapter,
+ownership/state format, validation suite, release builder, tests, and CI
+configuration. The project name is branding and is not claimed as a copyright
+work merely because it appears in those materials.
 
 This claim is limited to the material actually created and arranged for this
 project. It does not claim ownership of general software-delivery methods,
