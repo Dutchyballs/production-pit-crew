@@ -16,11 +16,12 @@ The repository root is `D:\production-pit-crew\production-pit-crew` on branch `m
 - Windows PowerShell 5.1 completed a real disposable project install, repeat install, uninstall, clean reinstall, and final inventory verification. Git for Windows Bash passed syntax checking and its supported disposable lifecycle.
 - `python -m compileall -q scripts tests` passed.
 - OpenAI's official plugin validator passed the repository manifest. The CI YAML parsed successfully.
+- The official Codex CLI `0.147.0` discovered all four project skills from a clean installed copy. In an ephemeral read-only session it also successfully spawned each of the four project custom-agent types without running shell commands or changing project files.
 - The project MIT licence, complete Agency Agents MIT notice, and origin/ownership/claims record are present and enforced by strict validation.
-- Pre-rewrite Codex Security scans completed with full coverage and zero findings for both the Windows mutation implementation and the clean-reinstall fix. A fresh exact-current scan is required after the final release candidate is committed because the approved noreply rewrite changed every commit identity.
+- Pre-rewrite Codex Security scans completed with full coverage and zero findings for both the Windows mutation implementation and the clean-reinstall fix. A fresh bounded scan of the rewritten release-candidate line also completed with full coverage and zero findings; it must be repeated after any further tracked change.
 - Package and plugin versions both report `0.1.0`.
 
-All tests used isolated temporary homes and projects. Jason's real Codex configuration was not modified.
+Installer and package tests used isolated temporary homes and projects. The live Codex discovery check reused Jason's existing ChatGPT sign-in in an ephemeral read-only session. It did not change Codex configuration or run project commands.
 
 ## Release tooling and three-operating-system state
 
@@ -34,13 +35,12 @@ Repository text is pinned to LF through `.gitattributes` so Git archives contain
 
 - The updated CI has not run because this local repository has no remote. Native macOS and Linux results therefore remain pending even though their test jobs and complete wrapper lifecycles are defined.
 - PowerShell 7 is not installed locally; Windows PowerShell 5.1 is verified here and PowerShell 7 is covered by the pending Windows CI job.
-- Local Codex plugin-marketplace installation and fresh-session discovery could not be exercised because the desktop-bundled `codex.exe` is inaccessible through the WindowsApps ACL in this environment. The official manifest validator did pass, and the skills were used directly from the repository.
 - Jason's end-user acceptance check is pending.
 - No push, tag, publication, or public release has been performed.
 
 ## Release status
 
-The candidate is **locally ready but the v0.1 release decision is on HOLD for missing external evidence**. This is not a known product failure: the previous Windows implementation blocker is closed. A final PASS cannot be decided until there is current green CI on Ubuntu, macOS, and Windows, a supported Codex install/discovery smoke test, Jason's acceptance, and explicit approval to tag or publish.
+The candidate is **locally ready but the v0.1 release decision is on HOLD for missing external evidence**. This is not a known product failure: the previous Windows implementation blocker is closed, and supported Codex skill/custom-agent discovery now passes locally. A final PASS cannot be decided until there is current green CI on Ubuntu, macOS, and Windows, Jason's acceptance, and explicit approval to tag or publish.
 
 Do not describe `0.1.0` as released until those conditions pass. Missing remote or host evidence must remain pending rather than being inferred from local Windows results.
 
@@ -56,7 +56,7 @@ Do not describe `0.1.0` as released until those conditions pass. Missing remote 
 
 ## Next bounded step
 
-Regenerate the exact archive, checksum, and physical Windows proof after this handover update. Then configure the approved private Git remote and run the existing CI workflow. If all three operating systems pass, install the verified candidate through a supported Codex plugin/adapter path, start a fresh task, confirm the four skills and four agents are discoverable, and complete Jason's short acceptance workflow. Finally run `pitcrew-gate-release` against the exact candidate commit and evidence before any tag or public release.
+Regenerate the exact archive, checksum, final security scan, and physical Windows proof after this handover update. Then configure the approved private Git remote and run the existing CI workflow. If all three operating systems pass, complete Jason's short acceptance workflow and run `pitcrew-gate-release` against the exact candidate commit and evidence before any tag or public release.
 
 Start a continuation by reading, in order:
 

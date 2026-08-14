@@ -142,6 +142,8 @@ def legacy_preview_files() -> dict[tuple[str, str], bytes]:
                 contents = LEGACY_OPENAI_YAML[current_name].encode()
             else:
                 contents = source.read_bytes()
+                if source.suffix.lower() in {".json", ".md", ".svg", ".toml", ".yaml", ".yml"}:
+                    contents = contents.replace(b"\r\n", b"\n")
             inventory[("skills", f"{legacy_name}/{child}")] = contents
 
     ownership = json.loads((REPO_ROOT / "ownership.json").read_text(encoding="utf-8"))

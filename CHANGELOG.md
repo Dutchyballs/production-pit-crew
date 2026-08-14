@@ -16,4 +16,6 @@ All notable changes to Production Pit Crew are recorded here.
 - Allowed a clean uninstall to be reinstalled without force by safely reusing only file-empty, non-link skill directory trees.
 - Extended every native wrapper smoke test through repeat install and clean reinstall, pinned CI actions to immutable commits, and hardened local secret ignores.
 - Tightened the origin record so copyright claims cover the original software, documentation, assets, and arrangement without treating the product name itself as a copyright work.
+- Verified supported Codex CLI discovery for all four project skills and successful spawning of all four custom-agent types from an isolated installed copy.
+- Made the historical migration fixture canonicalize known text assets to LF so stale Windows checkout line endings cannot create false hash failures.
 - Recorded future host adapters as roadmap scope without claiming current support.
