@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -21,10 +22,15 @@ class ReleaseError(RuntimeError):
     pass
 
 
-def run_git(repo: Path, *arguments: str) -> str:
+def run_git(
+    repo: Path,
+    *arguments: str,
+    environment: dict[str, str] | None = None,
+) -> str:
     result = subprocess.run(
         ["git", *arguments],
         cwd=repo,
+        env=environment,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -58,6 +64,20 @@ def load_version(repo: Path) -> str:
 def tracked_files(repo: Path, commit: str) -> set[str]:
     output = run_git(repo, "ls-tree", "-r", "--name-only", commit)
     return {line for line in output.splitlines() if line}
+
+
+def create_archive(repo: Path, archive: Path, prefix: str, commit: str) -> None:
+    environment = os.environ.copy()
+    environment["TZ"] = "UTC"
+    run_git(
+        repo,
+        "archive",
+        "--format=zip",
+        f"--prefix={prefix}",
+        f"--output={archive}",
+        commit,
+        environment=environment,
+    )
 
 
 def verify_archive(archive: Path, prefix: str, expected_files: set[str]) -> None:
@@ -139,14 +159,7 @@ def build(repo: Path, output_dir: Path, *, verify_extracted: bool) -> tuple[Path
     temporary_archive = output_dir / f".{archive.name}.tmp"
     temporary_archive.unlink(missing_ok=True)
     try:
-        run_git(
-            repo,
-            "archive",
-            "--format=zip",
-            f"--prefix={prefix}",
-            f"--output={temporary_archive}",
-            commit,
-        )
+        create_archive(repo, temporary_archive, prefix, commit)
         verify_archive(temporary_archive, prefix, expected_files)
         temporary_archive.replace(archive)
     finally:

@@ -87,10 +87,12 @@ jobs:
           .\scripts\install.ps1 -Scope Project -ProjectDir $projectDir -Uninstall
           if (Test-Path -LiteralPath (Join-Path $projectDir ".cwc\codex-workflow-crew-state.json")) { throw "pwsh final uninstall left state behind" }
 
-  release-archive:
-    name: Build and verify release archive
+  release_archive_ubuntu:
+    name: Build and verify release archive (Ubuntu)
     needs: [validate, wrappers]
     runs-on: ubuntu-latest
+    outputs:
+      sha256: ${{ steps.checksum.outputs.sha256 }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -98,6 +100,13 @@ jobs:
           python-version: "3.11"
       - name: Build from the exact clean commit and verify extraction
         run: python scripts/build_release.py --output-dir dist --verify-extracted
+      - name: Record Ubuntu archive checksum
+        id: checksum
+        shell: bash
+        run: |
+          checksum="$(cut -d ' ' -f1 dist/SHA256SUMS)"
+          test -n "$checksum"
+          echo "sha256=$checksum" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: production-pit-crew-release-candidate
@@ -105,3 +114,64 @@ jobs:
             dist/production-pit-crew-0.1.0.zip
             dist/SHA256SUMS
           if-no-files-found: error
+
+  release_archive_windows:
+    name: Build reproducibility archive (Windows)
+    needs: [validate, wrappers]
+    runs-on: windows-latest
+    outputs:
+      sha256: ${{ steps.checksum.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.11"
+      - name: Build from the exact clean commit and verify extraction
+        run: python scripts/build_release.py --output-dir dist --verify-extracted
+      - name: Record Windows archive checksum
+        id: checksum
+        shell: pwsh
+        run: |
+          $checksum = ((Get-Content -LiteralPath dist/SHA256SUMS -Raw).Trim() -split '\s+')[0]
+          if (-not $checksum) { throw "Archive checksum is missing" }
+          "sha256=$checksum" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+  release_archive_macos:
+    name: Build reproducibility archive (macOS)
+    needs: [validate, wrappers]
+    runs-on: macos-latest
+    outputs:
+      sha256: ${{ steps.checksum.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.11"
+      - name: Build from the exact clean commit and verify extraction
+        run: python scripts/build_release.py --output-dir dist --verify-extracted
+      - name: Record macOS archive checksum
+        id: checksum
+        shell: bash
+        run: |
+          checksum="$(cut -d ' ' -f1 dist/SHA256SUMS)"
+          test -n "$checksum"
+          echo "sha256=$checksum" >> "$GITHUB_OUTPUT"
+
+  release_archive_reproducibility:
+    name: Confirm reproducible release checksum
+    needs: [release_archive_ubuntu, release_archive_windows, release_archive_macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compare Ubuntu, Windows, and macOS archive checksums
+        shell: bash
+        env:
+          UBUNTU_SHA256: ${{ needs.release_archive_ubuntu.outputs.sha256 }}
+          WINDOWS_SHA256: ${{ needs.release_archive_windows.outputs.sha256 }}
+          MACOS_SHA256: ${{ needs.release_archive_macos.outputs.sha256 }}
+        run: |
+          test -n "$UBUNTU_SHA256"
+          test -n "$WINDOWS_SHA256"
+          test -n "$MACOS_SHA256"
+          test "$UBUNTU_SHA256" = "$WINDOWS_SHA256"
+          test "$UBUNTU_SHA256" = "$MACOS_SHA256"
+          echo "Reproducible SHA-256: $UBUNTU_SHA256"
