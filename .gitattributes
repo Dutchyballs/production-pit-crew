@@ -1,0 +1,10 @@
+# Keep checkout and release-archive text bytes stable on every operating system.
+* text=auto eol=lf
+
+# Preserve binary assets byte-for-byte.
+*.gif binary
+*.ico binary
+*.jpeg binary
+*.jpg binary
+*.png binary
+*.zip binary

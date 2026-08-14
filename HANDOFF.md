@@ -10,7 +10,7 @@ The repository root is `D:\production-pit-crew\production-pit-crew` on branch `m
 
 ## Verified in this workspace
 
-- `python scripts/validate.py --strict` passed: 4 agents, 4 skills, and 48 files checked.
+- `python scripts/validate.py --strict` passed: 4 agents, 4 skills, and 49 files checked.
 - `python -m unittest discover -s tests -v` passed: 43 tests run and 4 environment-specific symlink/Bash-platform tests skipped. All 19 installer mutation tests now run on Windows.
 - Windows-focused coverage passed for junction escape rejection without symlink privilege, pinned-ancestry rename resistance, unsafe Windows names, lock contention, rollback during install and uninstall, user and project scope, Unicode paths, conflicts, force backups, migration, tampered state, repeat install, and exact-file uninstall.
 - Windows PowerShell 5.1 completed a real disposable project install and uninstall. Git for Windows Bash passed syntax checking and the same real disposable lifecycle.
@@ -26,6 +26,8 @@ All tests used isolated temporary homes and projects. Jason's real Codex configu
 The CI workflow covers Ubuntu, macOS, and Windows on Python 3.11 plus the current Python 3 release. It runs strict validation and the full unit suite on all three operating systems, real Bash install/uninstall lifecycles on Ubuntu and macOS, and real Windows PowerShell 5.1 and PowerShell 7 lifecycles on Windows.
 
 `scripts/build_release.py` refuses a dirty worktree, archives the exact Git commit, verifies CRC and the complete tracked-file inventory, rejects unsafe archive paths/runtime data, writes `SHA256SUMS`, extracts the archive, and reruns strict validation plus all tests. CI uploads only the verified ZIP and checksum after every operating-system job passes.
+
+Repository text is pinned to LF through `.gitattributes` so Git archives contain the same migration-sensitive bytes on Windows, macOS, and Linux.
 
 ## Not yet verified
 
